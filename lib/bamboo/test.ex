@@ -157,12 +157,9 @@ defmodule Bamboo.Test do
       unsent_email = Bamboo.Email.new_email(subject: "something else")
       assert_delivered_email(unsent_email) # Will fail
   """
-  defmacro assert_delivered_email(email) do
-    quote do
-      import ExUnit.Assertions
-      email = Bamboo.Test.normalize_for_testing(unquote(email))
-      assert_receive({:delivered_email, ^email}, 100, Bamboo.Test.flunk_with_email_list(email))
-    end
+  def assert_delivered_email(email) do
+    email = normalize_for_testing(email)
+    assert_receive({:delivered_email, ^email}, 100, flunk_with_email_list(email))
   end
 
   @doc """
@@ -220,16 +217,13 @@ defmodule Bamboo.Test do
       assert_email_delivered_with(text_body: ~r/love/) # Will pass
       assert_email_delivered_with(text_body: ~r/like/) # Will fail
   """
-  defmacro assert_email_delivered_with(email_params) do
-    quote bind_quoted: [email_params: email_params] do
-      import ExUnit.Assertions
-      assert_receive({:delivered_email, email}, 100, Bamboo.Test.flunk_no_emails_received())
+  def assert_email_delivered_with(email_params) do
+    assert_receive({:delivered_email, email}, 100, flunk_no_emails_received())
 
-      received_email_params = email |> Map.from_struct()
+    received_email_params = email |> Map.from_struct()
 
-      assert Enum.all?(email_params, fn {k, v} -> do_match(received_email_params[k], v, k) end),
-             Bamboo.Test.flunk_attributes_do_not_match(email_params, received_email_params)
-    end
+    assert Enum.all?(email_params, fn {k, v} -> do_match(received_email_params[k], v, k) end),
+           flunk_attributes_do_not_match(email_params, received_email_params)
   end
 
   @doc """
@@ -247,43 +241,35 @@ defmodule Bamboo.Test do
       email = Bamboo.Email.new_email(subject: "something") |> MyApp.Mailer.deliver
       refute_email_delivered_with(subject: ~r/some/) # Will fail
   """
-  defmacro refute_email_delivered_with(email_params) do
-    quote bind_quoted: [email_params: email_params] do
-      import ExUnit.Assertions
-
-      received_email_params =
-        receive do
-          {:delivered_email, email} -> Map.from_struct(email)
-        after
-          100 -> []
-        end
-
-      if is_nil(received_email_params) do
-        refute false
-      else
-        refute Enum.any?(email_params, fn {k, v} -> do_match(received_email_params[k], v, k) end),
-               Bamboo.Test.flunk_attributes_match(email_params, received_email_params)
+  def refute_email_delivered_with(email_params) do
+    received_email_params =
+      receive do
+        {:delivered_email, email} -> Map.from_struct(email)
+      after
+        100 -> []
       end
+
+    if is_nil(received_email_params) do
+      refute false
+    else
+      refute Enum.any?(email_params, fn {k, v} -> do_match(received_email_params[k], v, k) end),
+             flunk_attributes_match(email_params, received_email_params)
     end
   end
 
-  @doc false
-  def do_match(value1, value2 = %Regex{}, _type) do
+  defp do_match(value1, value2 = %Regex{}, _type) do
     Regex.match?(value2, value1)
   end
 
-  @doc false
-  def do_match(value1, value2, type) do
+  defp do_match(value1, value2, type) do
     value1 == value2 || value1 == format(value2, type)
   end
 
-  @doc false
   defp format(record, type) do
     Bamboo.Formatter.format_email_address(record, %{type: type})
   end
 
-  @doc false
-  def flunk_with_email_list(email) do
+  defp flunk_with_email_list(email) do
     if Enum.empty?(delivered_emails()) do
       flunk_no_emails_received()
     else
@@ -301,8 +287,7 @@ defmodule Bamboo.Test do
     end
   end
 
-  @doc false
-  def flunk_no_emails_received do
+  defp flunk_no_emails_received do
     flunk("""
     There were 0 emails delivered to this process.
 
@@ -317,8 +302,7 @@ defmodule Bamboo.Test do
     """)
   end
 
-  @doc false
-  def flunk_attributes_do_not_match(params_given, params_received) do
+  defp flunk_attributes_do_not_match(params_given, params_received) do
     """
     The parameters given do not match.
 
@@ -332,8 +316,7 @@ defmodule Bamboo.Test do
     """
   end
 
-  @doc false
-  def flunk_attributes_match(params_given, params_received) do
+  defp flunk_attributes_match(params_given, params_received) do
     """
     The parameters given match.
 
@@ -458,7 +441,7 @@ defmodule Bamboo.Test do
   end
 
   @doc false
-  def normalize_for_testing(email) do
+  defp normalize_for_testing(email) do
     email
     |> Bamboo.Mailer.normalize_addresses()
     |> Bamboo.TestAdapter.clean_assigns()
