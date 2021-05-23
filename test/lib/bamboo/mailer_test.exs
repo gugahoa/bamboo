@@ -519,6 +519,12 @@ defmodule Bamboo.MailerTest do
       assert %Bamboo.Email{blocked: true} = Mailer.deliver_later!(email)
       refute_receive {:deliver, %Bamboo.Email{to: [{nil, "blocked@blocked.com"}]}, _config}
     end
+
+    @tag interceptors: [{Bamboo.ConfigurableInterceptor, rewrite_subject_to: "test subject"}]
+    test "deliver_now!/1 must apply interceptors and rewrite email subject " do
+      email = new_email(to: "any_email@example.com", subject: "any subject")
+      assert %Bamboo.Email{subject: "test subject"} = Mailer.deliver_now!(email)
+    end
   end
 
   defp new_email(attrs \\ []) do

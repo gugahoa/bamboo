@@ -4,6 +4,9 @@ defmodule Bamboo.Interceptor do
 
   An interceptor allows you to modify or block an email before it is sent. To
   block an email, it must be marked as blocked with `Bamboo.Email.block/1`.
+  
+  You may optionally define a `call_opts/2`, where the second argument is passed
+  via the config file.
 
   ## Example
 
@@ -22,4 +25,6 @@ defmodule Bamboo.Interceptor do
   """
 
   @callback call(email :: Bamboo.Email.t()) :: Bamboo.Email.t()
+  @callback call_opts(email :: Bamboo.Email.t(), opts :: any()) :: Bamboo.Email.t()
+  @optional_callbacks call_opts: 2
 end
